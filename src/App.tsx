@@ -11,6 +11,7 @@ import DashboardScreen from "./pages/DashboardScreen";
 import ServicesScreen from "./pages/ServicesScreen";
 import PayoutScreen from "./pages/PayoutScreen";
 import ProfileScreen from "./pages/ProfileScreen";
+import TreasuryDashboard from "./pages/TreasuryDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/dashboard" element={<DashboardScreen />} />
           <Route path="/services" element={<ServicesScreen />} />
           <Route path="/payout" element={<PayoutScreen />} />
+          <Route path="/treasury" element={<TreasuryDashboard />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
