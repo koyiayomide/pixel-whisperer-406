@@ -12,6 +12,7 @@ import ServicesScreen from "./pages/ServicesScreen";
 import PayoutScreen from "./pages/PayoutScreen";
 import ProfileScreen from "./pages/ProfileScreen";
 import TreasuryDashboard from "./pages/TreasuryDashboard";
+import InstallScreen from "./pages/InstallScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/services" element={<ServicesScreen />} />
           <Route path="/payout" element={<PayoutScreen />} />
           <Route path="/treasury" element={<TreasuryDashboard />} />
+          <Route path="/install" element={<InstallScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
