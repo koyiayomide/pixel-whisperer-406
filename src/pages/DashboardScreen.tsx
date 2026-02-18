@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Eye, EyeOff, Bell, Plus, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
 import { getCookie } from '@/lib/cookies';
+import POS from '@/components/svgIcons/Pos';
 
 const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -39,7 +40,8 @@ const DashboardScreen: React.FC = () => {
 
   const quickActions = [
     { icon: ArrowUpRight, label: 'Send Money', color: 'bg-secondary/10 text-secondary', route: '/payout' },
-    { icon: Plus, label: 'Add Service', color: 'bg-accent/10 text-accent', route: '/services' },
+     { icon: POS, label: 'SoftPos', color: 'bg-sidebar-ring/10 text-primary', route: '#' },
+    // { icon: Plus, label: 'Add Service', color: 'bg-accent/10 text-accent', route: '/services' },
     { icon: ArrowDownLeft, label: 'Receive', color: 'bg-success/10 text-success', route: '#' },
     { icon: TrendingUp, label: 'Analytics', color: 'bg-primary/10 text-primary', route: '#' },
   ];
