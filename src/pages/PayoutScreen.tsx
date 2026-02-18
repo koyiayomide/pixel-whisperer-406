@@ -240,7 +240,7 @@ const PayoutScreen: React.FC = () => {
         {/* Wallet balance */}
         <div className="gradient-primary rounded-xl p-4 mb-6">
           <p className="text-primary-foreground/60 text-xs">Available Balance</p>
-          <p className="text-2xl font-heading font-bold text-primary-foreground">₦2,450,000</p>
+          <p className="text-2xl font-heading font-bold text-primary-foreground">₦0.00</p>
         </div>
 
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="space-y-4">

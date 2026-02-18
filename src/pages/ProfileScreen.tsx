@@ -1,15 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { User, ChevronRight, Shield, Bell, HelpCircle, LogOut, Settings, CreditCard, FileText } from 'lucide-react';
+import { getCookie, deleteAllCookies } from '@/lib/cookies';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [userData, setUserData] = useState({
+    email: '',
+    name: '',
+    bankName: '',
+    accountNumber: '',
+    businessName: '' 
+  });
+
+  useEffect(() => {
+    setUserData({
+      email: getCookie('userEmail') || 'merchant@example.com',
+      name: getCookie('userName') || 'Merchant User',
+      bankName: getCookie('bankName') || 'Sterling Bank',
+      accountNumber: getCookie('accountNumber') || '9710123456',
+      businessName: ''
+    });
+  }, []);
 
   const handleTabChange = (tab: string) => {
     if (tab === 'home') navigate('/dashboard');
     if (tab === 'services') navigate('/services');
     if (tab === 'payout') navigate('/payout');
+  };
+
+  const handleLogout = () => {
+    // Delete all cookies
+    deleteAllCookies();
+    // Navigate to login
+    navigate('/login');
   };
 
   const menuItems = [
@@ -22,6 +47,14 @@ const ProfileScreen: React.FC = () => {
     { icon: HelpCircle, label: 'Help & Support', desc: 'FAQs, contact us' },
   ];
 
+  const getInitials = () => {
+    const name = userData.name || userData.email;
+    if (name.includes('@')) {
+      return name.substring(0, 2).toUpperCase();
+    }
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
   return (
     <MobileLayout showNav activeTab="profile" onTabChange={handleTabChange}>
       <div className="px-5 pt-14 pb-4">
@@ -30,11 +63,11 @@ const ProfileScreen: React.FC = () => {
         {/* Profile Card */}
         <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-full gradient-secondary flex items-center justify-center">
-            <span className="text-xl font-bold text-primary-foreground">AO</span>
+            <span className="text-xl font-bold text-primary-foreground">{getInitials()}</span>
           </div>
           <div className="flex-1">
-            <p className="font-heading font-bold text-foreground">Adebayo Ogunlesi</p>
-            <p className="text-xs text-muted-foreground">Adebayo Stores</p>
+            <p className="font-heading font-bold text-foreground">{userData.email}</p>
+            <p className="text-xs text-muted-foreground">{userData.businessName}</p>
             <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">
               Verified Merchant
             </span>
@@ -71,7 +104,7 @@ const ProfileScreen: React.FC = () => {
 
         {/* Logout */}
         <button
-          onClick={() => navigate('/')}
+          onClick={handleLogout}
           className="w-full flex items-center gap-3 p-3 mt-4 rounded-xl text-destructive hover:bg-destructive/5 transition-colors"
         >
           <LogOut size={18} />

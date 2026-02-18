@@ -1,13 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '@/components/MobileLayout';
 import { Eye, EyeOff, Bell, Plus, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
+import { getCookie } from '@/lib/cookies';
 
 const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
   const [balanceVisible, setBalanceVisible] = useState(true);
+  
+  // Get user data from cookies
+  const [userData, setUserData] = useState({
+    name: '',
+    email: '',
+    bankName: '',
+    accountNumber: '',
+    balance: ''
+  });
+
+  useEffect(() => {
+    // Load user data from cookies
+    setUserData({
+      name: getCookie('userName') || 'Merchant',
+      email: getCookie('userEmail') || 'merchant@example.com',
+      bankName: getCookie('bankName') || 'Sterling Bank',
+      accountNumber: getCookie('accountNumber') || '9710123456',
+      balance: getCookie('balance') || '0.00'
+    });
+  }, []);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -31,6 +52,21 @@ const DashboardScreen: React.FC = () => {
     { type: 'debit', label: 'Airtime Purchase', amount: '-₦5,000', time: '2 days ago', icon: ArrowUpRight },
   ];
 
+  // Get initials for avatar
+  const getInitials = () => {
+    const name = userData.name || userData.email;
+    if (name.includes('@')) {
+      return name.substring(0, 2).toUpperCase();
+    }
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  // Format balance with commas
+  const formatBalance = (balance: string) => {
+    const num = parseFloat(balance) || 0.00;
+    return '₦' + num.toLocaleString('en-NG');
+  };
+
   return (
     <MobileLayout showNav activeTab="home" onTabChange={handleTabChange}>
       {/* Header */}
@@ -38,11 +74,13 @@ const DashboardScreen: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full gradient-secondary flex items-center justify-center">
-              <span className="text-sm font-bold text-primary-foreground">AO</span>
+              <span className="text-sm font-bold text-primary-foreground">{getInitials()}</span>
             </div>
             <div>
               <p className="text-primary-foreground/60 text-xs">Good morning</p>
-              <p className="text-primary-foreground font-semibold text-sm">Adebayo Ogunlesi</p>
+              <p className="text-primary-foreground font-semibold text-sm">
+                {userData.name || userData.email.split('@')[0]}
+              </p>
             </div>
           </div>
           <button className="w-10 h-10 rounded-full bg-primary-foreground/10 flex items-center justify-center relative">
@@ -65,11 +103,11 @@ const DashboardScreen: React.FC = () => {
             </button>
           </div>
           <p className="text-3xl font-heading font-bold text-primary-foreground mb-1">
-            {balanceVisible ? '₦2,450,000' : '₦•••••••'}
+            {balanceVisible ? formatBalance(userData.balance) : '₦•••••••'}
           </p>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">
-              Sterling Bank • 9710123456
+              {userData.bankName} • {userData.accountNumber}
             </span>
           </div>
         </motion.div>

@@ -4,13 +4,39 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
     hmr: {
       overlay: false,
+    },
+    proxy: {
+      '/api': {
+        target: 'http://102.212.247.210:8088',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to:', proxyReq.path);
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('Received Response from:', req.url, 'Status:', proxyRes.statusCode);
+            
+            // Log response body
+            let body = '';
+            proxyRes.on('data', (chunk) => {
+              body += chunk;
+            });
+            proxyRes.on('end', () => {
+              console.log('Response body:', body);
+            });
+          });
+        },
+      },
     },
   },
   plugins: [
