@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, User, Building2, FileText, CheckCircle, Upload, Camera, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Building2, FileText, CheckCircle, Upload, Camera, X, Loader2, Info } from 'lucide-react';
 import { api } from '../lib/api';
 
 const STEPS = [
@@ -443,26 +443,48 @@ interface DocumentsStepProps {
 
 const DocumentsStep = ({ data, onChange }: DocumentsStepProps) => (
   <div className="space-y-4">
-    <p className="text-sm text-muted-foreground mb-2">Upload the following documents for verification</p>
+    <div className="flex items-center gap-2 mb-2">
+      <p className="text-sm text-muted-foreground">Upload the following documents for verification</p>
+      <div className="flex items-center gap-1 px-2 py-1 bg-secondary/10 rounded-full">
+        <Info size={12} className="text-secondary" />
+        <span className="text-[10px] font-medium text-secondary">Max 25MB each</span>
+      </div>
+    </div>
     <UploadBox
-      label="CAC Certificate" description="PDF or image"
-      file={data.cacDoc} onFileChange={(f) => onChange('cacDoc', f)}
-      accept=".pdf,.jpg,.jpeg,.png" required
+      label="CAC Certificate" 
+      description="PDF or image (max 25MB)"
+      file={data.cacDoc} 
+      onFileChange={(f) => onChange('cacDoc', f)}
+      accept=".pdf,.jpg,.jpeg,.png" 
+      required
+      maxSize={25}
     />
     <UploadBox
-      label="Valid Government ID" description="NIN slip, Voter's card, Driver's license, or Passport"
-      file={data.govtId} onFileChange={(f) => onChange('govtId', f)}
-      accept=".pdf,.jpg,.jpeg,.png" required
+      label="Valid Government ID" 
+      description="NIN slip, Voter's card, Driver's license, or Passport (max 25MB)"
+      file={data.govtId} 
+      onFileChange={(f) => onChange('govtId', f)}
+      accept=".pdf,.jpg,.jpeg,.png" 
+      required
+      maxSize={25}
     />
     <UploadBox
-      label="Utility Bill" description="Not older than 3 months"
-      file={data.utilityBill} onFileChange={(f) => onChange('utilityBill', f)}
-      accept=".pdf,.jpg,.jpeg,.png" required
+      label="Utility Bill" 
+      description="Not older than 3 months (max 25MB)"
+      file={data.utilityBill} 
+      onFileChange={(f) => onChange('utilityBill', f)}
+      accept=".pdf,.jpg,.jpeg,.png" 
+      required
+      maxSize={25}
     />
     <UploadBox
-      label="Business/Location Photo" description="Photo of your business premises"
-      file={data.bizPhoto} onFileChange={(f) => onChange('bizPhoto', f)}
-      accept="image/*" required
+      label="Business/Location Photo" 
+      description="Photo of your business premises (max 25MB)"
+      file={data.bizPhoto} 
+      onFileChange={(f) => onChange('bizPhoto', f)}
+      accept="image/*" 
+      required
+      maxSize={25}
     />
   </div>
 );
@@ -530,15 +552,24 @@ interface UploadBoxProps {
   onFileChange: (file: File | null) => void;
   accept?: string;
   required?: boolean;
+  maxSize?: number;
 }
 
-const UploadBox = ({ label, description, file, onFileChange, accept, required }: UploadBoxProps) => {
+const UploadBox = ({ 
+  label, 
+  description, 
+  file, 
+  onFileChange, 
+  accept, 
+  required,
+  maxSize = 25 // Default to 25MB
+}: UploadBoxProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] ?? null;
-    if (selected && selected.size > 10 * 1024 * 1024) {
-      alert('File too large. Please select a file under 10MB.');
+    if (selected && selected.size > maxSize * 1024 * 1024) {
+      alert(`File too large. Maximum size is ${maxSize}MB.`);
       return;
     }
     onFileChange(selected);
