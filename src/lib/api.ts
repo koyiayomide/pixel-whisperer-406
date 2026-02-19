@@ -59,6 +59,7 @@ export const api = {
     if (file.type === 'application/pdf') {
       return Promise.resolve(file);
     }
+    
 
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
