@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, User, Building2, FileText, CheckCircle, Upload, Camera, X, Loader2, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Building2, FileText, CheckCircle, Upload, Camera, X, Loader2, Info, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
 
 const STEPS = [
@@ -17,16 +17,17 @@ const OnboardingScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Submitting...');
   const [error, setError] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<{[key: string]: string}>({});
 
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     firstName: '',
     lastName: '',
-    middleName: '',          // capital N to match backend
+    middleName: '',
     mobileNumber: '',
     address: '',
-    city: '',                // required by backend
+    city: '',
     bvn: '',
     dob: '',
     pin: '',
@@ -42,6 +43,10 @@ const OnboardingScreen: React.FC = () => {
 
   const updateFormData = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear file error for this field when a new file is selected
+    if (field.includes('Doc') || field.includes('Id') || field.includes('Bill') || field.includes('Photo')) {
+      setFileErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
   const validateStep = (step: number): boolean => {
@@ -71,6 +76,12 @@ const OnboardingScreen: React.FC = () => {
       }
     }
     if (step === 2) {
+      // Check for file errors first
+      if (Object.values(fileErrors).some(error => error)) {
+        setError('Please fix the file upload errors before proceeding');
+        return false;
+      }
+      
       if (!formData.cacDoc || !formData.govtId || !formData.utilityBill || !formData.bizPhoto) {
         setError('Please upload all required documents');
         return false;
@@ -91,6 +102,7 @@ const OnboardingScreen: React.FC = () => {
   const prevStep = () => {
     if (currentStep > 0) {
       setError(null);
+      setFileErrors({});
       setCurrentStep(currentStep - 1);
     }
   };
@@ -100,7 +112,6 @@ const OnboardingScreen: React.FC = () => {
     setError(null);
   
     try {
-      // Compress images first — return values used directly (NOT via state)
       setLoadingMessage('Compressing images...');
       const [readyCacDoc, readyGovtId, readyUtilityBill, readyBizPhoto] = await Promise.all([
         formData.cacDoc ? api.compressImage(formData.cacDoc) : Promise.resolve(null),
@@ -109,7 +120,6 @@ const OnboardingScreen: React.FC = () => {
         formData.bizPhoto ? api.compressImage(formData.bizPhoto) : Promise.resolve(null),
       ]);
   
-      // Convert compressed files to base64
       setLoadingMessage('Preparing documents...');
       const [cacDocBase64, govtIdBase64, utilityBillBase64, bizPhotoBase64] = await Promise.all([
         readyCacDoc ? api.fileToBase64(readyCacDoc) : Promise.resolve(undefined),
@@ -125,10 +135,10 @@ const OnboardingScreen: React.FC = () => {
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        middleName: formData.middleName || '',   // capital N
+        middleName: formData.middleName || '',
         mobileNumber: formData.mobileNumber,
         address: formData.address,
-        city: formData.city,                     // new field
+        city: formData.city,
         bvn: formData.bvn,
         dob: formData.dob,
         pin: formData.pin,
@@ -144,12 +154,10 @@ const OnboardingScreen: React.FC = () => {
   
       const response = await api.submitOnboarding(payload);
   
-      // Check for successful response (has user or walletId)
       if (response.user || response.walletId) {
         console.log('Registration successful:', response);
         setCompleted(true);
       } 
-      // Check for error response format
       else if (response.message) {
         setError(response.message);
       } 
@@ -228,11 +236,16 @@ const OnboardingScreen: React.FC = () => {
       </div>
 
       {error && (
-        <div className="px-6 py-2">
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-xl">
-            {error}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="px-6 py-2"
+        >
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-xl flex items-start gap-2">
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+            <span>{error}</span>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <div className="flex-1 px-6 pt-2 pb-6 overflow-y-auto">
@@ -246,7 +259,14 @@ const OnboardingScreen: React.FC = () => {
           >
             {currentStep === 0 && <PersonalStep data={formData} onChange={updateFormData} />}
             {currentStep === 1 && <BusinessStep data={formData} onChange={updateFormData} />}
-            {currentStep === 2 && <DocumentsStep data={formData} onChange={updateFormData} />}
+            {currentStep === 2 && (
+              <DocumentsStep 
+                data={formData} 
+                onChange={updateFormData}
+                fileErrors={fileErrors}
+                setFileErrors={setFileErrors}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -385,7 +405,6 @@ const PersonalStep = ({ data, onChange }: PersonalStepProps) => {
         value={data.address} onChange={(e) => onChange('address', e.target.value)} required
       />
 
-      {/* City — required by backend */}
       <InputField
         label="City" placeholder="Lagos"
         value={data.city} onChange={(e) => onChange('city', e.target.value)} required
@@ -439,55 +458,101 @@ const BusinessStep = ({ data, onChange }: BusinessStepProps) => (
 interface DocumentsStepProps {
   data: any;
   onChange: (field: string, value: any) => void;
+  fileErrors: {[key: string]: string};
+  setFileErrors: React.Dispatch<React.SetStateAction<{[key: string]: string}>>;
 }
 
-const DocumentsStep = ({ data, onChange }: DocumentsStepProps) => (
-  <div className="space-y-4">
-    <div className="flex items-center gap-2 mb-2">
-      <p className="text-sm text-muted-foreground">Upload the following documents for verification</p>
-      <div className="flex items-center gap-1 px-2 py-1 bg-secondary/10 rounded-full">
-        <Info size={12} className="text-secondary" />
-        <span className="text-[10px] font-medium text-secondary">Max 25MB each</span>
+const DocumentsStep = ({ data, onChange, fileErrors, setFileErrors }: DocumentsStepProps) => {
+  // Check if any file errors exist
+  const hasFileErrors = Object.values(fileErrors).some(error => error);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-sm text-muted-foreground">Upload the following documents for verification</p>
+        <div className="flex items-center gap-1 px-2 py-1 bg-secondary/10 rounded-full">
+          <Info size={12} className="text-secondary" />
+          <span className="text-[10px] font-medium text-secondary">Max 25MB each</span>
+        </div>
       </div>
+
+      {hasFileErrors && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4"
+        >
+          <p className="text-xs font-medium text-amber-800 flex items-center gap-1.5">
+            <AlertCircle size={14} />
+            Please fix the following file errors:
+          </p>
+          <ul className="mt-2 space-y-1">
+            {Object.entries(fileErrors).map(([key, error]) => (
+              error && (
+                <li key={key} className="text-[11px] text-amber-700 flex items-start gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-amber-500 mt-1.5" />
+                  {error}
+                </li>
+              )
+            ))}
+          </ul>
+        </motion.div>
+      )}
+
+      <UploadBox
+        label="CAC Certificate" 
+        description="PDF or image (max 25MB)"
+        file={data.cacDoc} 
+        onFileChange={(f) => onChange('cacDoc', f)}
+        accept=".pdf,.jpg,.jpeg,.png" 
+        required
+        maxSize={25}
+        fieldKey="cacDoc"
+        setFileError={(error) => setFileErrors(prev => ({ ...prev, cacDoc: error }))}
+        fileError={fileErrors.cacDoc}
+      />
+      
+      <UploadBox
+        label="Valid Government ID" 
+        description="NIN slip, Voter's card, Driver's license, or Passport (max 25MB)"
+        file={data.govtId} 
+        onFileChange={(f) => onChange('govtId', f)}
+        accept=".pdf,.jpg,.jpeg,.png" 
+        required
+        maxSize={25}
+        fieldKey="govtId"
+        setFileError={(error) => setFileErrors(prev => ({ ...prev, govtId: error }))}
+        fileError={fileErrors.govtId}
+      />
+      
+      <UploadBox
+        label="Utility Bill" 
+        description="Not older than 3 months (max 25MB)"
+        file={data.utilityBill} 
+        onFileChange={(f) => onChange('utilityBill', f)}
+        accept=".pdf,.jpg,.jpeg,.png" 
+        required
+        maxSize={25}
+        fieldKey="utilityBill"
+        setFileError={(error) => setFileErrors(prev => ({ ...prev, utilityBill: error }))}
+        fileError={fileErrors.utilityBill}
+      />
+      
+      <UploadBox
+        label="Business/Location Photo" 
+        description="Photo of your business premises (max 25MB)"
+        file={data.bizPhoto} 
+        onFileChange={(f) => onChange('bizPhoto', f)}
+        accept="image/*" 
+        required
+        maxSize={25}
+        fieldKey="bizPhoto"
+        setFileError={(error) => setFileErrors(prev => ({ ...prev, bizPhoto: error }))}
+        fileError={fileErrors.bizPhoto}
+      />
     </div>
-    <UploadBox
-      label="CAC Certificate" 
-      description="PDF or image (max 25MB)"
-      file={data.cacDoc} 
-      onFileChange={(f) => onChange('cacDoc', f)}
-      accept=".pdf,.jpg,.jpeg,.png" 
-      required
-      maxSize={25}
-    />
-    <UploadBox
-      label="Valid Government ID" 
-      description="NIN slip, Voter's card, Driver's license, or Passport (max 25MB)"
-      file={data.govtId} 
-      onFileChange={(f) => onChange('govtId', f)}
-      accept=".pdf,.jpg,.jpeg,.png" 
-      required
-      maxSize={25}
-    />
-    <UploadBox
-      label="Utility Bill" 
-      description="Not older than 3 months (max 25MB)"
-      file={data.utilityBill} 
-      onFileChange={(f) => onChange('utilityBill', f)}
-      accept=".pdf,.jpg,.jpeg,.png" 
-      required
-      maxSize={25}
-    />
-    <UploadBox
-      label="Business/Location Photo" 
-      description="Photo of your business premises (max 25MB)"
-      file={data.bizPhoto} 
-      onFileChange={(f) => onChange('bizPhoto', f)}
-      accept="image/*" 
-      required
-      maxSize={25}
-    />
-  </div>
-);
+  );
+};
 
 // ─── Shared UI Components ─────────────────────────────────────────────────────
 
@@ -553,6 +618,9 @@ interface UploadBoxProps {
   accept?: string;
   required?: boolean;
   maxSize?: number;
+  fieldKey: string;
+  setFileError: (error: string) => void;
+  fileError?: string;
 }
 
 const UploadBox = ({ 
@@ -562,22 +630,48 @@ const UploadBox = ({
   onFileChange, 
   accept, 
   required,
-  maxSize = 25 // Default to 25MB
+  maxSize = 25,
+  fieldKey,
+  setFileError,
+  fileError
 }: UploadBoxProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] ?? null;
-    if (selected && selected.size > maxSize * 1024 * 1024) {
-      alert(`File too large. Maximum size is ${maxSize}MB.`);
-      return;
+    
+    // Clear previous error
+    setFileError('');
+    
+    if (selected) {
+      // Check file size
+      if (selected.size > maxSize * 1024 * 1024) {
+        const errorMsg = `"${label}" exceeds the ${maxSize}MB limit (${(selected.size / (1024 * 1024)).toFixed(2)}MB)`;
+        setFileError(errorMsg);
+        onFileChange(null);
+        return;
+      }
+      
+      // Check file type
+      const acceptedTypes = accept?.split(',').map(type => type.trim().replace('.', '')) || [];
+      if (acceptedTypes.length > 0 && !acceptedTypes.some(type => selected.type.includes(type) || selected.name.endsWith(type))) {
+        const errorMsg = `"${label}" must be a valid file type: ${accept}`;
+        setFileError(errorMsg);
+        onFileChange(null);
+        return;
+      }
+      
+      onFileChange(selected);
+    } else {
+      onFileChange(null);
     }
-    onFileChange(selected);
+    
     e.target.value = '';
   };
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setFileError('');
     onFileChange(null);
   };
 
@@ -592,28 +686,43 @@ const UploadBox = ({
     : null;
 
   return (
-    <>
+    <div className="space-y-1">
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleChange} />
       <div
-        onClick={() => inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
-          file ? 'border-secondary/60 bg-secondary/5' : 'border-border hover:border-secondary/40 hover:bg-muted/50'
+        onClick={() => !file && inputRef.current?.click()}
+        className={`border-2 rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all ${
+          fileError ? 'border-destructive bg-destructive/5' :
+          file ? 'border-secondary/60 bg-secondary/5 border-2' : 
+          'border-dashed border-border hover:border-secondary/40 hover:bg-muted/50'
         }`}
       >
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors ${file ? 'bg-secondary/20' : 'bg-secondary/10'}`}>
-          {file ? <CheckCircle size={18} className="text-secondary" /> : <Upload size={18} className="text-secondary" />}
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+          fileError ? 'bg-destructive/10' :
+          file ? 'bg-secondary/20' : 'bg-secondary/10'
+        }`}>
+          {fileError ? (
+            <AlertCircle size={18} className="text-destructive" />
+          ) : file ? (
+            <CheckCircle size={18} className="text-secondary" />
+          ) : (
+            <Upload size={18} className="text-secondary" />
+          )}
         </div>
+        
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">
             {label} {required && <span className="text-destructive">*</span>}
           </p>
-          {file ? (
+          {fileError ? (
+            <p className="text-[11px] text-destructive font-medium">{fileError}</p>
+          ) : file ? (
             <p className="text-[11px] text-secondary font-medium truncate">{displayName} · {fileSize}</p>
           ) : (
             <p className="text-[11px] text-muted-foreground truncate">{description}</p>
           )}
         </div>
-        {file ? (
+        
+        {file && !fileError && (
           <button
             type="button"
             onClick={handleRemove}
@@ -621,11 +730,13 @@ const UploadBox = ({
           >
             <X size={14} className="text-muted-foreground" />
           </button>
-        ) : (
+        )}
+        
+        {!file && !fileError && (
           <span className="text-xs text-secondary font-medium shrink-0">Upload</span>
         )}
       </div>
-    </>
+    </div>
   );
 };
 
