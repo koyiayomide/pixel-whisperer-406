@@ -55,7 +55,7 @@ const OnboardingScreen: React.FC = () => {
         setError('PIN must be exactly 4 digits');
         return false;
       }
-      if (formData.bvn.length !== 12) {
+      if (formData.bvn.length !== 11) {
         setError('BVN must be exactly 11 digits');
         return false;
       }
@@ -370,9 +370,9 @@ const PersonalStep = ({ data, onChange }: PersonalStepProps) => {
 
       <div className="grid grid-cols-2 gap-3">
         <InputField
-          label="BVN" placeholder="223456789011"
-          value={data.bvn} onChange={(e) => onChange('bvn', e.target.value.replace(/\D/g, '').slice(0, 12))}
-          required maxLength={12}
+          label="BVN" placeholder="22345678901"
+          value={data.bvn} onChange={(e) => onChange('bvn', e.target.value.replace(/\D/g, '').slice(0, 11))}
+          required maxLength={11}
         />
         <InputField
           label="Date of Birth" placeholder="" type="date"
