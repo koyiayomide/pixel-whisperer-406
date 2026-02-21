@@ -543,7 +543,7 @@ const DocumentsStep = ({ data, onChange, fileErrors, setFileErrors }: DocumentsS
         description="Photo of your business premises (max 25MB)"
         file={data.bizPhoto} 
         onFileChange={(f) => onChange('bizPhoto', f)}
-        accept="image/*" 
+        accept=".pdf,.jpg,.jpeg,.png" 
         required
         maxSize={25}
         fieldKey="bizPhoto"
@@ -639,33 +639,44 @@ const UploadBox = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] ?? null;
-    
-    // Clear previous error
     setFileError('');
-    
+  
     if (selected) {
-      // Check file size
       if (selected.size > maxSize * 1024 * 1024) {
-        const errorMsg = `"${label}" exceeds the ${maxSize}MB limit (${(selected.size / (1024 * 1024)).toFixed(2)}MB)`;
-        setFileError(errorMsg);
+        setFileError(`"${label}" exceeds the ${maxSize}MB limit (${(selected.size / (1024 * 1024)).toFixed(2)}MB)`);
         onFileChange(null);
         return;
       }
-      
-      // Check file type
-      const acceptedTypes = accept?.split(',').map(type => type.trim().replace('.', '')) || [];
-      if (acceptedTypes.length > 0 && !acceptedTypes.some(type => selected.type.includes(type) || selected.name.endsWith(type))) {
-        const errorMsg = `"${label}" must be a valid file type: ${accept}`;
-        setFileError(errorMsg);
-        onFileChange(null);
-        return;
+  
+      // Fixed type validation
+      if (accept) {
+        const acceptedPatterns = accept.split(',').map(a => a.trim());
+        const isValid = acceptedPatterns.some(pattern => {
+          if (pattern.startsWith('.')) {
+            // Extension check e.g. ".pdf", ".jpg"
+            return selected.name.toLowerCase().endsWith(pattern.toLowerCase());
+          } else if (pattern.endsWith('/*')) {
+            // Wildcard MIME e.g. "image/*"
+            const mimePrefix = pattern.split('/')[0];
+            return selected.type.startsWith(mimePrefix + '/');
+          } else {
+            // Exact MIME e.g. "application/pdf"
+            return selected.type === pattern;
+          }
+        });
+  
+        if (!isValid) {
+          setFileError(`"${label}" must be a valid file type: ${accept}`);
+          onFileChange(null);
+          return;
+        }
       }
-      
+  
       onFileChange(selected);
     } else {
       onFileChange(null);
     }
-    
+  
     e.target.value = '';
   };
 
